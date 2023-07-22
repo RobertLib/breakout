@@ -1,0 +1,129 @@
+name: Build Linux
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+env:
+  SDL3_VERSION: "3.3.4"
+  SDL3_TAG: "prerelease-3.3.4"
+  SDL3_TTF_VERSION: "3.2.2"
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            ninja-build \
+            git \
+            xxd \
+            libfreetype-dev \
+            libharfbuzz-dev \
+            libogg-dev \
+            libvorbis-dev \
+            libflac-dev \
+            libmpg123-dev \
+            libopus-dev \
+            libopusfile-dev \
+            libmodplug-dev \
+            libasound2-dev \
+            libpulse-dev \
+            libx11-dev \
+            libxext-dev \
+            libxrandr-dev \
+            libxcursor-dev \
+            libxi-dev \
+            libxss-dev \
+            libxtst-dev \
+            libxfixes-dev \
+            libwayland-dev \
+            libxkbcommon-dev \
+            libegl1-mesa-dev \
+            libgles2-mesa-dev \
+            libdrm-dev \
+            libgbm-dev \
+            libdecor-0-dev
+
+      - name: Build SDL3 from source
+        run: |
+          mkdir -p libs/linux
+
+          # Build SDL3 prerelease (SDL3_mixer requires 3.3.3+)
+          echo "Building SDL3 ${SDL3_VERSION}..."
+          curl -L -o sdl3.tar.gz "https://github.com/libsdl-org/SDL/releases/download/${SDL3_TAG}/SDL3-${SDL3_VERSION}.tar.gz"
+          tar xzf sdl3.tar.gz
+          cd SDL3-${SDL3_VERSION}
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/libs/linux
+          cmake --build build
+          cmake --install build
+          cd ..
+          rm -rf SDL3-${SDL3_VERSION} sdl3.tar.gz
+
+          # Build SDL3_ttf
+          echo "Building SDL3_ttf ${SDL3_TTF_VERSION}..."
+          curl -L -o sdl3_ttf.tar.gz "https://github.com/libsdl-org/SDL_ttf/releases/download/release-${SDL3_TTF_VERSION}/SDL3_ttf-${SDL3_TTF_VERSION}.tar.gz"
+          tar xzf sdl3_ttf.tar.gz
+          cd SDL3_ttf-${SDL3_TTF_VERSION}
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/libs/linux -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/libs/linux
+          cmake --build build
+          cmake --install build
+          cd ..
+          rm -rf SDL3_ttf-${SDL3_TTF_VERSION} sdl3_ttf.tar.gz
+
+          # Build SDL3_mixer from source (no release available)
+          echo "Building SDL3_mixer from source..."
+          git clone --depth 1 --branch main https://github.com/libsdl-org/SDL_mixer.git
+          cd SDL_mixer
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/libs/linux -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/libs/linux
+          cmake --build build
+          cmake --install build
+          cd ..
+          rm -rf SDL_mixer
+
+      - name: Build
+        run: |
+          # Make scripts executable
+          chmod +x embed_assets.sh
+
+          # Build release version (no editor)
+          WORKSPACE_DIR=$GITHUB_WORKSPACE make -f makefile.linux release
+
+      - name: Prepare release package
+        run: |
+          mkdir -p release/breakout/lib
+          cp build/breakout release/breakout/
+          cp README.md release/breakout/ 2>/dev/null || true
+          cp LICENSE release/breakout/ 2>/dev/null || true
+
+          # Copy shared libraries
+          cp libs/linux/lib/*.so* release/breakout/lib/
+
+          # Create run script
+          echo '#!/bin/bash' > release/breakout/run.sh
+          echo 'cd "$(dirname "$0")"' >> release/breakout/run.sh
+          echo 'export LD_LIBRARY_PATH="$PWD/lib:$LD_LIBRARY_PATH"' >> release/breakout/run.sh
+          echo './breakout' >> release/breakout/run.sh
+          chmod +x release/breakout/run.sh
+
+          echo "Release contents:"
+          ls -la release/breakout/
+          ls -la release/breakout/lib/
+
+      - name: Upload Linux build
+        uses: actions/upload-artifact@v4
+        with:
+          name: Breakout-Linux
+          path: release/breakout/
+          retention-days: 30

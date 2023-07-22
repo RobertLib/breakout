@@ -50,3 +50,11 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# Generated files
+src/embedded_assets.h
+
+# Other
+.DS_Store
+build/**
+!build/.gitkeep

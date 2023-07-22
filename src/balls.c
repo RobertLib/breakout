@@ -1,0 +1,111 @@
+#include "balls.h"
+#include "camera.h"
+#include "paddle.h"
+
+Ball balls[BALL_COUNT];
+
+SDL_Texture *ballTexture;
+
+Mix_Chunk *ballSound;
+
+void activateAllBalls(void)
+{
+  for (int i = 0; i < BALL_COUNT; i++)
+  {
+    if (!balls[i].active)
+    {
+      initializeBall(&balls[i], true);
+    }
+  }
+}
+
+void resetBalls(void)
+{
+  for (int i = 0; i < BALL_COUNT; i++)
+  {
+    initializeBall(&balls[i], i == 0);
+  }
+}
+
+bool isBallsDocked(void)
+{
+  bool allDocked = true;
+
+  for (int i = 0; i < BALL_COUNT; i++)
+  {
+    if (!isBallDocked(&balls[i]))
+    {
+      allDocked = false;
+      break;
+    }
+  }
+
+  return allDocked;
+}
+
+void releaseBalls(void)
+{
+  for (int i = 0; i < BALL_COUNT; i++)
+  {
+    releaseBall(&balls[i]);
+  }
+}
+
+void initializeBalls(void)
+{
+  resetBalls();
+
+  ballTexture = loadTexture(assetsPath("ball.bmp"));
+  ballSound = loadWAV(assetsPath("ball.wav"));
+}
+
+static bool isOffScreen(const Ball *ball)
+{
+  return ball->pos.x + BALL_SIZE < 0 ||
+         ball->pos.x > SCREEN_WIDTH ||
+         ball->pos.y > camera.y + SCREEN_HEIGHT;
+}
+
+void updateBalls(void)
+{
+  bool areAllActiveBallsOffScreen = true;
+
+  for (int i = 0; i < BALL_COUNT; i++)
+  {
+    updateBall(&balls[i]);
+
+    if (balls[i].active)
+    {
+      if (isOffScreen(&balls[i]))
+      {
+        balls[i].active = false;
+      }
+      else
+      {
+        areAllActiveBallsOffScreen = false;
+      }
+    }
+  }
+
+  if (areAllActiveBallsOffScreen)
+  {
+    paddle.type = PADDLE_TYPE_DYING;
+  }
+}
+
+void drawBalls(void)
+{
+  for (int i = 0; i < BALL_COUNT; i++)
+  {
+    drawBall(&balls[i]);
+  }
+}
+
+void destroyBalls(void)
+{
+  SDL_DestroyTexture(ballTexture);
+  Mix_FreeChunk(ballSound);
+
+  ballTexture = NULL;
+  ballSound = NULL;
+}

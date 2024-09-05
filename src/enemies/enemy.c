@@ -1,8 +1,8 @@
 #include "enemy.h"
+#include "enemies.h"
 #include "../bricks/bricks.h"
 #include "../lib/camera.h"
-
-static const int ENEMY_SIZE = 20;
+#include "../paddle/paddle.h"
 
 static void changeOfDirectionCallback(Obj *obj);
 
@@ -35,7 +35,7 @@ void initializeEnemy(Enemy *enemy, const float x, const float y)
   enemy->changeOfDirectionTimer.obj = (Obj *)enemy;
 }
 
-static void handleCollision(Enemy *enemy, const char direction)
+static void handleCollisionWithBrick(Enemy *enemy, const char direction)
 {
   if (direction == 'x')
   {
@@ -59,7 +59,7 @@ static void handleSurroundingTiles(Obj *enemy, Brick *brick)
           BRICK_WIDTH,
           BRICK_HEIGHT))
   {
-    handleCollision((Enemy *)enemy, 'x');
+    handleCollisionWithBrick((Enemy *)enemy, 'x');
   }
 
   if (checkCollision(
@@ -72,7 +72,24 @@ static void handleSurroundingTiles(Obj *enemy, Brick *brick)
           BRICK_WIDTH,
           BRICK_HEIGHT))
   {
-    handleCollision((Enemy *)enemy, 'y');
+    handleCollisionWithBrick((Enemy *)enemy, 'y');
+  }
+}
+
+static void checkCollisionWithPaddle(Enemy *enemy)
+{
+  if (checkCollision(
+          enemy->pos.x,
+          enemy->pos.y,
+          ENEMY_SIZE,
+          ENEMY_SIZE,
+          paddle.pos.x,
+          paddle.pos.y,
+          paddleWidth(),
+          PADDLE_HEIGHT))
+  {
+    enemy->active = false;
+    changePaddleType(PADDLE_TYPE_DYING);
   }
 }
 
@@ -99,6 +116,14 @@ void updateEnemy(Enemy *enemy)
 
   checkSurroundingTilesInGrid((Obj *)enemy, handleSurroundingTiles);
 
+  checkCollisionWithPaddle(enemy);
+
+  // If the enemy is outside the lower border of the camera, it will be disabled
+  if (enemy->pos.y > camera.y + SCREEN_HEIGHT)
+  {
+    enemy->active = false;
+  }
+
   enemy->pos.x += enemy->vel.x * enemy->speed * dt;
   enemy->pos.y += enemy->vel.y * enemy->speed * dt;
 
@@ -112,15 +137,11 @@ void drawEnemy(const Enemy *enemy)
     return;
   }
 
-  SDL_SetRenderDrawColor(renderer, 0xff, 0xff, 0x00, 0xff);
-
-  SDL_RenderFillRect(
+  SDL_RenderCopy(
       renderer,
-      &(SDL_Rect){
-          enemy->pos.x,
-          enemy->pos.y - camera.y,
-          ENEMY_SIZE,
-          ENEMY_SIZE});
+      enemyTexture,
+      NULL,
+      &(SDL_Rect){enemy->pos.x, enemy->pos.y - camera.y, ENEMY_SIZE, ENEMY_SIZE});
 }
 
 void destroyEnemy(UNUSED const Enemy *enemy)

@@ -5,6 +5,8 @@ int numEnemies;
 
 Enemy *enemies;
 
+SDL_Texture *enemyTexture;
+
 void initializeEnemies(void)
 {
   numEnemies = 0;
@@ -50,6 +52,8 @@ void initializeEnemies(void)
       y++;
     }
   }
+
+  enemyTexture = loadTexture("src/enemies/enemy.bmp");
 }
 
 void updateEnemies(void)
@@ -72,7 +76,10 @@ void destroyEnemies(void)
 {
   free(enemies);
 
+  SDL_DestroyTexture(enemyTexture);
+
   enemies = NULL;
+  enemyTexture = NULL;
 
   numEnemies = 0;
 }

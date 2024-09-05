@@ -1,6 +1,7 @@
 #include "ball.h"
 #include "balls.h"
 #include "../bricks/bricks.h"
+#include "../enemies/enemies.h"
 #include "../lib/camera.h"
 #include "../paddle/paddle.h"
 #include "../screens/playing-screen.h"
@@ -81,7 +82,7 @@ void initializeBall(Ball *ball, bool active)
   placeOnPaddle(ball);
 }
 
-static void handleCollision(Ball *ball, Brick *brick, const char direction)
+static void handleCollisionWithBrick(Ball *ball, Brick *brick, const char direction)
 {
   if (direction == 'x')
   {
@@ -113,7 +114,7 @@ static void handleSurroundingTiles(Obj *ball, Brick *brick)
           BRICK_WIDTH,
           BRICK_HEIGHT))
   {
-    handleCollision((Ball *)ball, brick, 'x');
+    handleCollisionWithBrick((Ball *)ball, brick, 'x');
   }
 
   if (checkCollision(
@@ -126,7 +127,7 @@ static void handleSurroundingTiles(Obj *ball, Brick *brick)
           BRICK_WIDTH,
           BRICK_HEIGHT))
   {
-    handleCollision((Ball *)ball, brick, 'y');
+    handleCollisionWithBrick((Ball *)ball, brick, 'y');
   }
 }
 
@@ -208,6 +209,28 @@ void updateBall(Ball *ball)
     if (!isBallDocked(ball))
     {
       Mix_PlayChannel(1, ballSound, 0);
+    }
+  }
+
+  // Check if the ball collides with the enemies
+  for (int i = 0; i < numEnemies; i++)
+  {
+    if (enemies[i].active &&
+        checkCollision(
+            nextX,
+            nextY,
+            BALL_SIZE,
+            BALL_SIZE,
+            enemies[i].pos.x,
+            enemies[i].pos.y,
+            ENEMY_SIZE,
+            ENEMY_SIZE))
+    {
+      ball->vel.y *= -1;
+      enemies[i].active = false;
+
+      addScore(600);
+      updateScoreInStatusBar();
     }
   }
 

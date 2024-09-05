@@ -1,7 +1,9 @@
 #include "bullet.h"
 #include "../bricks/bricks.h"
+#include "../enemies/enemies.h"
 #include "../lib/camera.h"
 #include "../paddle/paddle.h"
+#include "../ui/status-bar.h"
 
 static const int BULLET_HEIGHT = 20;
 static const int SPEED = 600;
@@ -51,6 +53,32 @@ void updateBullet(Bullet *bullet)
       {
         paddle.levelCompleted = true;
       }
+    }
+  }
+
+  // Check if the bullet collides with a enemies
+  for (int i = 0; i < numEnemies; i++)
+  {
+    if (!enemies[i].active)
+    {
+      continue;
+    }
+
+    if (checkCollision(
+            bullet->pos.x,
+            bullet->pos.y,
+            BULLET_WIDTH,
+            BULLET_HEIGHT,
+            enemies[i].pos.x,
+            enemies[i].pos.y,
+            ENEMY_SIZE,
+            ENEMY_SIZE))
+    {
+      enemies[i].active = false;
+      bullet->active = false;
+
+      addScore(400);
+      updateScoreInStatusBar();
     }
   }
 

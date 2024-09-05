@@ -2,6 +2,8 @@
 
 #include "../globals.h"
 
+static const int ENEMY_SIZE = 20;
+
 typedef struct Enemy
 {
   Vec2 pos;

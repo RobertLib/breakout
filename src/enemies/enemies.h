@@ -7,6 +7,8 @@ extern int numEnemies;
 
 extern Enemy *enemies;
 
+extern SDL_Texture *enemyTexture;
+
 void initializeEnemies(void);
 
 void updateEnemies(void);
